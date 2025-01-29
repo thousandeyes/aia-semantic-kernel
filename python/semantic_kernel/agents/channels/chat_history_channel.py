@@ -64,9 +64,6 @@ class ChatHistoryChannel(AgentChannel, ChatHistory):
                 f"Invalid channel binding for agent with id: `{id}` with name: ({type(agent).__name__})"
             )
 
-        # pre-process history reduction
-        await agent.reduce_history(self)
-
         message_count = len(self.messages)
         # mutated_history = set()
         mutated_history = list()
@@ -123,9 +120,6 @@ class ChatHistoryChannel(AgentChannel, ChatHistory):
             raise ServiceInvalidTypeError(
                 f"Invalid channel binding for agent with id: `{id}` with name: ({type(agent).__name__})"
             )
-
-        # pre-process history reduction
-        await agent.reduce_history(self)
 
         message_count = len(self.messages)
 
