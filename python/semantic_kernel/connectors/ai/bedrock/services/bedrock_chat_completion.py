@@ -6,6 +6,9 @@ from collections.abc import AsyncGenerator, Callable
 from functools import partial
 from typing import TYPE_CHECKING, Any, ClassVar
 
+import os
+
+
 if sys.version_info >= (3, 12):
     from typing import override  # pragma: no cover
 else:
