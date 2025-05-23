@@ -381,6 +381,7 @@ class BedrockChatCompletion(BedrockBase, ChatCompletionClientBase):
                 FunctionCallContent(
                     id=event["contentBlockStart"]["start"]["toolUse"]["toolUseId"],
                     name=event["contentBlockStart"]["start"]["toolUse"]["name"],
+                    index=event["contentBlockStart"]["contentBlockIndex"],
                 )
             )
 
