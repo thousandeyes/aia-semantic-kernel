@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import re
 from collections.abc import Callable, Mapping
 from functools import partial
 from typing import Any
@@ -77,7 +78,26 @@ def _format_user_message(message: ChatMessageContent) -> dict[str, Any]:
                 }
             })
         else:
-            contents.append({"text": item.text})
+            # part of item.text within <amazon-bedrock-guardrails-guardContent></amazon-bedrock-guardrails_*> needs to be extracted
+            # stuff inside these tags needs to be added as {"guardContent": {"text": {"text": TEXT_HERE}}}
+            # stuff outside these tags needs to be added as {"text": TEXT_HERE}
+            text = item.text
+            # import pdb; pdb.set_trace()
+            pattern = r'<custom-amazon-bedrock-guardrails-guardContent>(.*?)</custom-amazon-bedrock-guardrails-guardContent>'
+            parts = re.split(pattern, text, flags=re.DOTALL)
+            flag = False
+            for part in parts:
+                if not flag:
+                    contents.append({"text": part})
+                else:
+                    contents.append({
+                        "guardContent": {
+                            "text": {
+                                "text": part
+                            }
+                        }
+                    })
+                flag = not flag
 
     return {
         "role": "user",
