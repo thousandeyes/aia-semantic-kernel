@@ -82,7 +82,6 @@ def _format_user_message(message: ChatMessageContent) -> dict[str, Any]:
             # stuff inside these tags needs to be added as {"guardContent": {"text": {"text": TEXT_HERE}}}
             # stuff outside these tags needs to be added as {"text": TEXT_HERE}
             text = item.text
-            # import pdb; pdb.set_trace()
             pattern = r'<custom-amazon-bedrock-guardrails-guardContent>(.*?)</custom-amazon-bedrock-guardrails-guardContent>'
             parts = re.split(pattern, text, flags=re.DOTALL)
             flag = False
