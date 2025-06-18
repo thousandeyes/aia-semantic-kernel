@@ -78,25 +78,20 @@ def _format_user_message(message: ChatMessageContent) -> dict[str, Any]:
                 }
             })
         else:
-            # part of item.text within <amazon-bedrock-guardrails-guardContent></amazon-bedrock-guardrails_*> needs to be extracted
-            # stuff inside these tags needs to be added as {"guardContent": {"text": {"text": TEXT_HERE}}}
-            # stuff outside these tags needs to be added as {"text": TEXT_HERE}
             text = item.text
-            pattern = r'<custom-amazon-bedrock-guardrails-guardContent>(.*?)</custom-amazon-bedrock-guardrails-guardContent>'
-            parts = re.split(pattern, text, flags=re.DOTALL)
-            flag = False
-            for part in parts:
-                if not flag:
-                    contents.append({"text": part})
-                else:
-                    contents.append({
-                        "guardContent": {
-                            "text": {
-                                "text": part
-                            }
-                        }
-                    })
-                flag = not flag
+            parts: list[str] = text.split("Here is the user question:", 1)
+            # atmost two parts are expected, the first part is the prompt and the second part is the user query
+            # only the second part is passed through guardrails
+            # if the delimiter is not found, the entire text is passed through guardrails
+            if len(parts) < 2:
+                contents.append({"text": text})
+            else:
+                prompt = parts[0]
+                user_query = parts[1]
+                contents.extend([
+                    {"text": prompt},
+                    {"guardContent": {"text": {"text": user_query}}},
+                ])
 
     return {
         "role": "user",
