@@ -77,7 +77,7 @@ def _format_user_message(message: ChatMessageContent) -> dict[str, Any]:
                 }
             })
         else:
-            text = item.text
+            text: str = item.text
             delimiter = "Here is the user question:"
             parts: list[str] = text.split(delimiter, 1)
             # if delimiter is present in text; pass only latter part through guardrails
