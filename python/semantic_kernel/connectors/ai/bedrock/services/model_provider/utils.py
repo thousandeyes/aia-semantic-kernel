@@ -83,8 +83,6 @@ def _format_user_message(message: ChatMessageContent) -> dict[str, Any]:
             # if delimiter is present in text; pass only latter part through guardrails
             # else pass entire text
             if delimiter in text:
-                # two parts are expected always, first part is the prompt and second part is the user query
-                # only second part is passed through guardrails
                 prompt = parts[0]
                 user_query = parts[1]
                 contents.extend([
