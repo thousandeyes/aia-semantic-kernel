@@ -2,7 +2,6 @@
 
 import asyncio
 import json
-import re
 from collections.abc import Callable, Mapping
 from functools import partial
 from typing import Any
