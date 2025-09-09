@@ -42,6 +42,7 @@ class BedrockModelProvider(Enum):
         except StopIteration:
             raise ValueError(f"Model ID {model_id} does not contain a valid model provider name.")
 
+
 # region Text Completion
 
 

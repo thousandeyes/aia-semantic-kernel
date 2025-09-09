@@ -6,9 +6,6 @@ from collections.abc import AsyncGenerator, Callable
 from functools import partial
 from typing import TYPE_CHECKING, Any, ClassVar
 
-import os
-
-
 if sys.version_info >= (3, 12):
     from typing import override  # pragma: no cover
 else:
@@ -179,46 +176,12 @@ class BedrockChatCompletion(BedrockBase, ChatCompletionClientBase):
     ) -> Any:
         messages: list[dict[str, Any]] = []
 
-        tool_message_buffer = None
         for message in chat_history.messages:
             if message.role == AuthorRole.SYSTEM:
                 continue
+            messages.append(MESSAGE_CONVERTERS[message.role](message))
 
-            # If there are multiple tool responses, Bedrock expects one message
-            # with multiple content blocks, one for each response.
-            if message.role == AuthorRole.TOOL:
-                if tool_message_buffer is None:
-                    tool_message_buffer = MESSAGE_CONVERTERS[message.role](message)
-                else:
-                    tool_message_buffer["content"].extend(
-                        (MESSAGE_CONVERTERS[message.role](message)).get("content", [])
-                    )
-            else:
-                # If a non-tool message is encountered, flush the buffer
-                if tool_message_buffer:
-                    messages.append(tool_message_buffer)
-                    tool_message_buffer = None
-
-                messages.append(MESSAGE_CONVERTERS[message.role](message))
-
-        # Flush any remaining tool messages buffer
-        if tool_message_buffer:
-            messages.append(tool_message_buffer)
-
-        # Function to move toolUse last to handle AWS Bedrock issues in EU
-        def moved_tooluse_last(messages):
-            out = []
-            for entry in messages:
-                if isinstance(entry, dict) and isinstance(entry.get('content'), list):
-                    content = entry['content']
-                    if any(isinstance(c, dict) and 'toolUse' in c for c in content):
-                        entry = {**entry,
-                                 'content': sorted(content, key=lambda c: isinstance(c, dict) and 'toolUse' in c)}
-                out.append(entry)
-            return out
-
-        # Sort toolUse content to the end of the messages
-        return moved_tooluse_last(messages)
+        return messages
 
     # endregion
 
