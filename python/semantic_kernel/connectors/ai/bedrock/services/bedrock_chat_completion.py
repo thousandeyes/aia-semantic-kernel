@@ -184,7 +184,20 @@ class BedrockChatCompletion(BedrockBase, ChatCompletionClientBase):
                 continue
             messages.append(MESSAGE_CONVERTERS[message.role](message))
 
-        return messages
+        # Function to move toolUse last to handle AWS Bedrock issues in EU
+        def moved_tooluse_last(messages):
+            out = []
+            for entry in messages:
+                if isinstance(entry, dict) and isinstance(entry.get('content'), list):
+                    content = entry['content']
+                    if any(isinstance(c, dict) and 'toolUse' in c for c in content):
+                        entry = {**entry,
+                                 'content': sorted(content, key=lambda c: isinstance(c, dict) and 'toolUse' in c)}
+                out.append(entry)
+            return out
+
+        # Sort toolUse content to the end of the messages
+        return moved_tooluse_last(messages)
 
     # endregion
 
