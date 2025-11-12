@@ -50,10 +50,17 @@ def get_chat_completion_additional_model_request_fields(
 
     https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-anthropic-claude-messages.html
     """
-    if settings.top_k is not None:
-        return {"top_k": settings.top_k}
+    additional_model_request_fields = {}
+    # Add anthropic_beta for views-agent service (which uses extended context)
+    if hasattr(settings, 'service_id') and settings.service_id == "views-agent":
+        additional_model_request_fields["anthropic_beta"] = ["context-1m-2025-08-07"]
 
-    return None
+    # Add top_k if specified
+    if settings.top_k is not None:
+        additional_model_request_fields["top_k"] = settings.top_k
+    
+    # Return the dict if it has any fields, otherwise None
+    return additional_model_request_fields if additional_model_request_fields else None
 
 
 # endregion
