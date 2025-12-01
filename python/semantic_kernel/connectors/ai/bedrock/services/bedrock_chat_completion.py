@@ -309,8 +309,6 @@ class BedrockChatCompletion(BedrockBase, ChatCompletionClientBase):
         if anthropic_beta_features_list:
             if "additionalModelRequestFields" not in prepared_settings or prepared_settings["additionalModelRequestFields"] is None:
                 prepared_settings["additionalModelRequestFields"] = {}
-            if "anthropic_beta" not in prepared_settings["additionalModelRequestFields"]:
-                prepared_settings["additionalModelRequestFields"]["anthropic_beta"] = []
 
             prepared_settings["additionalModelRequestFields"]["anthropic_beta"] = anthropic_beta_features_list
 
