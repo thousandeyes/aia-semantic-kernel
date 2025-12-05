@@ -59,6 +59,19 @@ MODELS_WITH_PROMPT_CACHING: list = ["us.anthropic.claude-3-7-sonnet-20250219-v1:
                                     "eu.anthropic.claude-sonnet-4-20250514-v1:0"
                                     ]
 
+# Anthropic Beta feature configuration
+ANTHROPIC_BETA_1M_CONTEXT: str = "context-1m-2025-08-07"
+ANTHROPIC_BETA_FINE_GRAINED_TOOL_STREAM: str = "fine-grained-tool-streaming-2025-05-14"
+# Map environment variable names to their corresponding beta feature constants
+BETA_FEATURES = [
+    # Extended context window (200K to 1M tokens)
+    # Ref: https://aws.amazon.com/about-aws/whats-new/2025/08/anthropic-claude-sonnet-bedrock-expanded-context-window/
+    ("ANTHROPIC_EXTENDED_CONTEXT_MODELS", ANTHROPIC_BETA_1M_CONTEXT),
+    # Fine-grained tool streaming
+    # https://platform.claude.com/docs/en/agents-and-tools/tool-use/fine-grained-tool-streaming
+    ("ANTHROPIC_FINE_GRAINED_TOOL_STREAM_MODELS", ANTHROPIC_BETA_FINE_GRAINED_TOOL_STREAM),
+]
+
 class BedrockChatCompletion(BedrockBase, ChatCompletionClientBase):
     """Amazon Bedrock Chat Completion Service."""
 
@@ -279,16 +292,19 @@ class BedrockChatCompletion(BedrockBase, ChatCompletionClientBase):
                 "guardrailVersion": os.getenv("BEDROCK_GUARDRAIL_VERSION"),
                 "trace": "disabled",
             }
-            
-        # Add anthropic_beta header for extended context window support (200K to 1M tokens).
-        # Ref: https://aws.amazon.com/about-aws/whats-new/2025/08/anthropic-claude-sonnet-bedrock-expanded-context-window/
-        extended_context_models_str = os.getenv("ANTHROPIC_EXTENDED_CONTEXT_MODELS", "")
-        if extended_context_models_str:
-            extended_context_models = [m.strip() for m in extended_context_models_str.split(",")]
-            if self.ai_model_id in extended_context_models:
-                if 'additionalModelRequestFields' not in prepared_settings or prepared_settings["additionalModelRequestFields"] is None:
-                    prepared_settings["additionalModelRequestFields"] = {}
-                prepared_settings["additionalModelRequestFields"]["anthropic_beta"] = ["context-1m-2025-08-07"]
+
+        # Anthropic beta feature list
+        anthropic_beta_features_list = []
+        for env_var, beta_feature in BETA_FEATURES:
+            models_str = os.getenv(env_var, "")
+            if models_str and self.ai_model_id in [m.strip() for m in models_str.split(",")]:
+                anthropic_beta_features_list.append(beta_feature)
+
+        if anthropic_beta_features_list:
+            if "additionalModelRequestFields" not in prepared_settings or prepared_settings["additionalModelRequestFields"] is None:
+                prepared_settings["additionalModelRequestFields"] = {}
+
+            prepared_settings["additionalModelRequestFields"]["anthropic_beta"] = anthropic_beta_features_list
 
         return prepared_settings
 
