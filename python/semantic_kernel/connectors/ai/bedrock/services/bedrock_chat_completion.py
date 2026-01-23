@@ -286,12 +286,14 @@ class BedrockChatCompletion(BedrockBase, ChatCompletionClientBase):
             }
 
         # Add Guardrails
+        # AK 23.1.26: disable guardrails
         if os.getenv("BEDROCK_GUARDRAIL_ID", "") and os.getenv("BEDROCK_GUARDRAIL_VERSION", ""):
-            prepared_settings["guardrailConfig"] = {
-                "guardrailIdentifier": os.getenv("BEDROCK_GUARDRAIL_ID"),
-                "guardrailVersion": os.getenv("BEDROCK_GUARDRAIL_VERSION"),
-                "trace": "disabled",
-            }
+        #    prepared_settings["guardrailConfig"] = {
+        #        "guardrailIdentifier": os.getenv("BEDROCK_GUARDRAIL_ID"),
+        #        "guardrailVersion": os.getenv("BEDROCK_GUARDRAIL_VERSION"),
+        #        "trace": "disabled",
+        #    }
+            pass
 
         # Anthropic beta feature list
         anthropic_beta_features_list = []
