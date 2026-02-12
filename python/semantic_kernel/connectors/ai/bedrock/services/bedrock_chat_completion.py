@@ -1,5 +1,6 @@
 # Copyright (c) Microsoft. All rights reserved.
 
+import os
 import sys
 from collections.abc import AsyncGenerator, Callable
 from functools import partial
@@ -49,6 +50,24 @@ if TYPE_CHECKING:
     from semantic_kernel.connectors.ai.prompt_execution_settings import PromptExecutionSettings
     from semantic_kernel.contents.chat_history import ChatHistory
 
+MODELS_WITH_PROMPT_CACHING: list = ["us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+                                    "eu.anthropic.claude-3-7-sonnet-20250219-v1:0",
+                                    "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                                    "eu.anthropic.claude-sonnet-4-20250514-v1:0"
+                                    ]
+
+# Anthropic Beta feature configuration
+ANTHROPIC_BETA_1M_CONTEXT: str = "context-1m-2025-08-07"
+ANTHROPIC_BETA_FINE_GRAINED_TOOL_STREAM: str = "fine-grained-tool-streaming-2025-05-14"
+# Map environment variable names to their corresponding beta feature constants
+BETA_FEATURES = [
+    # Extended context window (200K to 1M tokens)
+    # Ref: https://aws.amazon.com/about-aws/whats-new/2025/08/anthropic-claude-sonnet-bedrock-expanded-context-window/
+    ("ANTHROPIC_EXTENDED_CONTEXT_MODELS", ANTHROPIC_BETA_1M_CONTEXT),
+    # Fine-grained tool streaming
+    # https://platform.claude.com/docs/en/agents-and-tools/tool-use/fine-grained-tool-streaming
+    ("ANTHROPIC_FINE_GRAINED_TOOL_STREAM_MODELS", ANTHROPIC_BETA_FINE_GRAINED_TOOL_STREAM),
+]
 
 class BedrockChatCompletion(BedrockBase, ChatCompletionClientBase):
     """Amazon Bedrock Chat Completion Service."""
@@ -133,6 +152,7 @@ class BedrockChatCompletion(BedrockBase, ChatCompletionClientBase):
         assert isinstance(settings, BedrockChatPromptExecutionSettings)  # nosec
 
         prepared_settings = self._prepare_settings_for_request(chat_history, settings)
+        prepared_settings["guardrailConfig"]["streamProcessingMode"] = "async"
         response_stream = await self._async_converse_streaming(**prepared_settings)
         for event in response_stream.get("stream"):
             if "messageStart" in event:
@@ -172,10 +192,18 @@ class BedrockChatCompletion(BedrockBase, ChatCompletionClientBase):
     ) -> Any:
         messages: list[dict[str, Any]] = []
 
+        prev_message_role: AuthorRole | None = None
         for message in chat_history.messages:
             if message.role == AuthorRole.SYSTEM:
                 continue
-            messages.append(MESSAGE_CONVERTERS[message.role](message))
+            formatted_message = MESSAGE_CONVERTERS[message.role](message)
+            if prev_message_role == AuthorRole.TOOL and message.role == AuthorRole.TOOL:
+                # Consecutive tool messages have to be appended in the same message
+                messages[-1][content_key] += formatted_message[content_key]
+            else:
+                # If previous message is not a tool message, we start a new message
+                messages.append(formatted_message)
+            prev_message_role = message.role
 
         return messages
 
@@ -189,6 +217,11 @@ class BedrockChatCompletion(BedrockBase, ChatCompletionClientBase):
                 continue
             messages.append(MESSAGE_CONVERTERS[message.role](message))
 
+        # Add Prompt caching for SYSTEM messages
+        if os.getenv("MODEL_ID") in MODELS_WITH_PROMPT_CACHING:
+            if messages:
+                messages.append({"cachePoint": {"type": "default"}})
+
         return messages
 
     def _prepare_settings_for_request(
@@ -201,7 +234,7 @@ class BedrockChatCompletion(BedrockBase, ChatCompletionClientBase):
         Settings are prepared based on the syntax shown here:
         https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/bedrock-runtime/client/converse.html
 
-        Note that Guardrails are not supported.
+        Note that Guardrails are not supported by Semantic Kernel but have been patched in this fork.
         """
         prepared_settings = {
             "modelId": self.ai_model_id,
@@ -219,10 +252,34 @@ class BedrockChatCompletion(BedrockBase, ChatCompletionClientBase):
         }
 
         if settings.tools and settings.tool_choice:
+            # Add Prompt caching for Tools
+            if os.getenv("MODEL_ID") in MODELS_WITH_PROMPT_CACHING:
+                settings.tools.append({"cachePoint": {"type": "default"}})
             prepared_settings["toolConfig"] = {
                 "tools": settings.tools,
                 "toolChoice": settings.tool_choice,
             }
+
+        # Add Guardrails
+        if os.getenv("BEDROCK_GUARDRAIL_ID", "") and os.getenv("BEDROCK_GUARDRAIL_VERSION", ""):
+            prepared_settings["guardrailConfig"] = {
+                "guardrailIdentifier": os.getenv("BEDROCK_GUARDRAIL_ID"),
+                "guardrailVersion": os.getenv("BEDROCK_GUARDRAIL_VERSION"),
+                "trace": "disabled",
+            }
+
+        # Anthropic beta feature list
+        anthropic_beta_features_list = []
+        for env_var, beta_feature in BETA_FEATURES:
+            models_str = os.getenv(env_var, "")
+            if models_str and self.ai_model_id in [m.strip() for m in models_str.split(",")]:
+                anthropic_beta_features_list.append(beta_feature)
+
+        if anthropic_beta_features_list:
+            if "additionalModelRequestFields" not in prepared_settings or prepared_settings["additionalModelRequestFields"] is None:
+                prepared_settings["additionalModelRequestFields"] = {}
+
+            prepared_settings["additionalModelRequestFields"]["anthropic_beta"] = anthropic_beta_features_list
 
         return prepared_settings
 
