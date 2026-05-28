@@ -6,6 +6,10 @@ on:
     paths:
       - "python/semantic_kernel/**"
       - "python/tests/unit/**"
+
+permissions:
+  contents: read
+
 env:
   # Configure a constant location for the uv cache
   UV_CACHE_DIR: /tmp/.uv-cache
@@ -21,11 +25,8 @@ jobs:
       UV_PYTHON: "3.10"
     steps:
       - uses: actions/checkout@v5
-      # Save the PR number to a file since the workflow_run event
-      # in the coverage report workflow does not have access to it
-      - name: Save PR number
-        run: |
-          echo ${{ github.event.number }} > ./pr_number
+        with:
+          persist-credentials: false
       - name: Set up uv
         uses: astral-sh/setup-uv@v6
         with:
@@ -40,10 +41,10 @@ jobs:
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
+          name: python-test-coverage-report
           path: |
             python/python-coverage.xml
             python/pytest.xml
-            python/pr_number
           overwrite: true
           retention-days: 1
           if-no-files-found: error
