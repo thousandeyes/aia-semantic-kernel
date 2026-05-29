@@ -17,6 +17,9 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Install Linkspector Chrome
+        run: npx -y puppeteer@24.37.5 browsers install chrome
+
       # Checks the status of hyperlinks in all files
       - name: Run linkspector
         uses: umbrelladocs/action-linkspector@v1
