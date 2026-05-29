@@ -1,5 +1,6 @@
 dirs: 
   - .
+modifiedFilesOnly: true
 ignorePatterns:
   - pattern: "/github/"
   - pattern: "./actions"
