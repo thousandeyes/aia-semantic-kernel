@@ -17,8 +17,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install Linkspector Chrome
-        run: npx -y "puppeteer@^24.37.5" browsers install chrome
+      - name: Configure Puppeteer Chrome
+        run: |
+          echo "PUPPETEER_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          google-chrome --version
 
       # Checks the status of hyperlinks in all files
       - name: Run linkspector
