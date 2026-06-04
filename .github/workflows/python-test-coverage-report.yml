@@ -7,46 +7,40 @@ on:
       - completed
 
 permissions:
+  actions: read
   contents: read
+  issues: write
   pull-requests: write
 
 jobs:
   python-test-coverage-report:
     runs-on: ubuntu-latest
-    if: github.event.workflow_run.conclusion == 'success'
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.pull_requests[0].number != null
     continue-on-error: false
     defaults:
       run:
         working-directory: python
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Download coverage report
         uses: actions/download-artifact@v4
         with:
-          github-token: ${{ secrets.GH_ACTIONS_PR_WRITE }}
+          github-token: ${{ github.token }}
           run-id: ${{ github.event.workflow_run.id }}
+          name: python-test-coverage-report
           path: ./python
-          merge-multiple: true
       - name: Display structure of downloaded files
         run: ls
-      - name: Read and set PR number
-        # Need to read the PR number from the file saved in the previous workflow
-        # because the workflow_run event does not have access to the PR number
-        # The PR number is needed to post the comment on the PR
-        run: |
-          PR_NUMBER=$(cat pr_number)
-          echo "PR number: $PR_NUMBER"
-          echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
       - name: Pytest coverage comment
         id: coverageComment
         uses: MishaKav/pytest-coverage-comment@v1.1.53
         with:
-          github-token: ${{ secrets.GH_ACTIONS_PR_WRITE }}
-          issue-number: ${{ env.PR_NUMBER }}
+          github-token: ${{ github.token }}
+          issue-number: ${{ github.event.workflow_run.pull_requests[0].number }}
           pytest-coverage-path: python/python-coverage.txt
           title: "Python Test Coverage Report"
           badge-title: "Python Test Coverage"
-          junitxml-title: "Python Unit Test Overview"
-          junitxml-path: python/pytest.xml
           default-branch: "main"
           report-only-changed-files: true

@@ -16,6 +16,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 2
+
+      - name: Configure Puppeteer Chrome
+        run: |
+          echo "PUPPETEER_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          google-chrome --version
 
       # Checks the status of hyperlinks in all files
       - name: Run linkspector
